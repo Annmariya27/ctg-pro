@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VS Code settings
+.vscode/
+
+# Environment variables / secrets
+.env
+
+# Data & logs
+*.log
+*.csv
+*.dat
+*.sqlite3
+
+# Build / distribution
+build/
+dist/
+*.egg-info/

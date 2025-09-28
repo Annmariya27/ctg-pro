@@ -1,0 +1,6 @@
+// src/constants/features.ts
+export const FEATURES_22 = [
+  "LB", "AC", "FM", "UC", "ASTV", "MSTV", "ALTV", "MLTV",
+  "DL", "DS", "DP", "Width", "Min", "Max", "Nmax",
+  "Nzeros", "Mode", "Mean", "Median", "Variance", "Tendency"
+];
