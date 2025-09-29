@@ -1,43 +1,81 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
 import { HeaderMenu } from "@/components/header-menu"
 
+type ResultCategory = "Normal" | "Suspect" | "Pathological"
+
+interface ResultData {
+  class_index: number // 1 for Normal, 2 for Suspect, 3 for Pathological
+  probability: number
+  patientName: string
+  patientId: string
+}
+
 export default function ResultsPage() {
-  const [currentResult] = useState<"normal" | "suspect" | "pathological">("suspect")
+  const [resultData, setResultData] = useState<ResultData | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    const storedResult = sessionStorage.getItem("analysisResult")
+    if (storedResult) {
+      setResultData(JSON.parse(storedResult))
+    }
+  }, [])
 
   const handleViewDetails = () => {
     router.push("/details")
   }
 
-  const getResultConfig = () => {
-    switch (currentResult) {
-      case "normal":
+  // 🔹 Make currentResult first
+  const resultMapping: ResultCategory[] = ["Normal", "Suspect", "Pathological"]
+  const currentResult =
+    resultData && resultData.class_index
+      ? resultMapping[resultData.class_index - 1]
+      : null
+
+  // 🔹 Pass currentResult into function
+  const getResultConfig = (result: ResultCategory | null) => {
+    switch (result) {
+      case "Normal":
         return {
           title: "Normal",
           bgColor: "bg-purple-600",
           showDetails: false,
         }
-      case "suspect":
+      case "Suspect":
         return {
           title: "Suspect",
           bgColor: "bg-purple-600",
           showDetails: true,
         }
-      case "pathological":
+      case "Pathological":
         return {
           title: "Pathological",
           bgColor: "bg-purple-600",
           showDetails: true,
         }
+      default:
+        return {
+          title: "Awaiting Result...",
+          bgColor: "bg-gray-400",
+          showDetails: false,
+        }
     }
   }
 
-  const config = getResultConfig()
+  const config = getResultConfig(currentResult)
+
+  if (!resultData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-200 to-pink-200">
+        <p>Loading results...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-200 to-pink-200 p-4 relative">
@@ -54,7 +92,11 @@ export default function ResultsPage() {
                   {config.title}
                 </Button>
                 {config.showDetails && (
-                  <Button onClick={handleViewDetails} variant="link" className="text-gray-600 hover:text-gray-800">
+                  <Button
+                    onClick={handleViewDetails}
+                    variant="link"
+                    className="text-gray-600 hover:text-gray-800"
+                  >
                     View Details
                   </Button>
                 )}

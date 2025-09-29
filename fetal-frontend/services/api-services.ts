@@ -1,95 +1,121 @@
-import { API_CONFIG, apiRequest } from "./config";
-import { FEATURES_22 } from "../constants/features"; // 👈 correct path
+import { API_CONFIG, apiRequest } from "./config"
 
-// --- Authentication Services ---
+// Define interfaces for API data structures
+// You should update these to match your actual backend API contracts
+
+interface AuthResponse {
+  token: string
+  user: {
+    id: string
+    name: string
+    email: string
+  }
+}
+
+interface UserProfile {
+  id: string
+  name: string
+  email: string
+  avatarUrl?: string
+}
+
+// Authentication Services
 export const authService = {
   login: async (email: string, password: string) => {
-    return apiRequest("/auth/login", {
+    return apiRequest<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.LOGIN, {
       method: "POST",
       body: JSON.stringify({ email, password }),
-    });
+    })
   },
 
   signup: async (name: string, email: string, password: string) => {
-    return apiRequest("/auth/signup", {
+    return apiRequest<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.SIGNUP, {
       method: "POST",
       body: JSON.stringify({ name, email, password }),
-    });
+    })
   },
 
   googleAuth: async (token: string) => {
-    return apiRequest("/auth/google", {
+    return apiRequest<AuthResponse>(API_CONFIG.ENDPOINTS.AUTH.GOOGLE_AUTH, {
       method: "POST",
       body: JSON.stringify({ token }),
-    });
+    })
   },
 
   forgotPassword: async (email: string) => {
-    return apiRequest("/auth/forgot-password", {
+    return apiRequest<{ message: string }>(API_CONFIG.ENDPOINTS.AUTH.FORGOT_PASSWORD, {
       method: "POST",
       body: JSON.stringify({ email }),
-    });
+    })
   },
-};
+}
 
-// --- CTG Analysis Services ---
+interface PredictionResponse {
+  class_index: 1 | 2 | 3; // Corresponds to Normal, Suspect, Pathological
+  probability: number;
+}
+
+// CTG Analysis Services
 export const analysisService = {
-  submitManualEntry: async (data: number[]) => {
-    // Map array → feature object (backend expects keys, not just values)
-    const payload: Record<string, number> = {};
-    FEATURES_22.forEach((name, i) => {
-      payload[name] = data[i];
-    });
-
-    return apiRequest("/predict", {
+  // This function now calls the backend's /predict endpoint
+  submitManualEntry: async (features: number[]) => {
+    // The backend has a /predict endpoint, not /analysis/manual
+    return apiRequest<PredictionResponse>("/predict", {
       method: "POST",
-      body: JSON.stringify(payload), // ✅ correct format
-    });
+      // The backend expects the data in a specific format: { features: [...] }
+      body: JSON.stringify({ features }),
+    })
   },
 
   uploadImages: async (formData: FormData) => {
-    return apiRequest("/analysis/upload", {
+    return apiRequest<any>(API_CONFIG.ENDPOINTS.ANALYSIS.IMAGE_UPLOAD, {
       method: "POST",
-      headers: {}, // browser sets content-type for FormData
+      headers: {}, // Remove Content-Type to let browser set it for FormData
       body: formData,
-    });
+    })
   },
 
   getResults: async (analysisId: string) => {
-    return apiRequest(`/analysis/results/${analysisId}`);
+    return apiRequest<any>(`${API_CONFIG.ENDPOINTS.ANALYSIS.GET_RESULTS}/${analysisId}`)
   },
 
   getDetails: async (analysisId: string) => {
-    return apiRequest(`/analysis/details/${analysisId}`);
+    return apiRequest<any>(`${API_CONFIG.ENDPOINTS.ANALYSIS.GET_DETAILS}/${analysisId}`)
   },
-};
+}
 
-// --- User Profile Services ---
+// User Profile Services
 export const userService = {
-  getProfile: async () => apiRequest("/user/profile"),
+  getProfile: async () => {
+    return apiRequest<UserProfile>(API_CONFIG.ENDPOINTS.USER.PROFILE)
+  },
 
-  updateProfile: async (profileData: any) =>
-    apiRequest("/user/update", {
+  updateProfile: async (profileData: any) => {
+    return apiRequest<UserProfile>(API_CONFIG.ENDPOINTS.USER.UPDATE_PROFILE, {
       method: "PUT",
       body: JSON.stringify(profileData),
-    }),
+    })
+  },
 
-  uploadAvatar: async (formData: FormData) =>
-    apiRequest("/user/avatar", {
+  uploadAvatar: async (formData: FormData) => {
+    return apiRequest<{ avatarUrl: string }>(API_CONFIG.ENDPOINTS.USER.UPLOAD_AVATAR, {
       method: "POST",
-      headers: {}, // browser handles FormData
+      headers: {}, // Remove Content-Type for FormData
       body: formData,
-    }),
-};
+    })
+  },
+}
 
-// --- Patient Services ---
+// Patient Services
 export const patientService = {
-  verifyPatient: async (name: string, patientId: string) =>
-    apiRequest("/patient/verify", {
+  verifyPatient: async (name: string, patientId: string) => {
+    return apiRequest<{ verified: boolean }>(API_CONFIG.ENDPOINTS.PATIENT.VERIFY, {
       method: "POST",
       body: JSON.stringify({ name, patientId }),
-    }),
+    })
+  },
 
-  getReports: async (patientId: string) =>
-    apiRequest(`/patient/reports/${patientId}`),
-};
+  getReports: async (patientId: string) => {
+    return apiRequest<any[]>(`${API_CONFIG.ENDPOINTS.PATIENT.REPORTS}/${patientId}`)
+  },
+}

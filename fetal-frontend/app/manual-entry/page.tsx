@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { HeaderMenu } from "@/components/header-menu"
+import { analysisService } from "@/services/api-services"
 
 interface FormData {
   [key: string]: string
@@ -14,72 +15,57 @@ export default function ManualEntryPage() {
   const router = useRouter()
   const [patientName, setPatientName] = useState("")
   const [patientId, setPatientId] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+
   const [formData, setFormData] = useState<FormData>({
-    baseline: "",
-    acceleration: "",
-    fetalMovement: "",
-    uterineContraction: "",
-    abnormalShortTerm: "",
-    shortTermVariability: "",
-    abnormalLongTerm: "",
-    longTermVariability: "",
-    histogramWidth: "",
-    histogramMin: "",
-    histogramMax: "",
-    histogramPeaks: "",
-    histogramZeros: "",
-    histogramMode: "",
-    histogramMean: "",
-    histogramMedian: "",
-    histogramVariance: "",
-    histogramTendency: "",
-    prolongedDecelerations: "",
-    abnormalDecelerations: "",
-    severeDecleration: "",
+    LB: "",
+    AC: "",
+    FM: "",
+    UC: "",
+    ASTV: "",
+    MSTV: "",
+    ALTV: "",
+    MLTV: "",
+    DL: "",
+    DS: "",
+    DP: "",
+    Width: "",
+    Min: "",
+    Max: "",
+    Nmax: "",
+    Nzeros: "",
+    Mode: "",
+    Mean: "",
+    Median: "",
+    Variance: "",
+    Tendency: "",
   })
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const [showValidation, setShowValidation] = useState(false)
 
   const fields = [
-    { key: "baseline", label: "Baseline value (SisPorto)", placeholder: "Enter the value" },
-    { key: "acceleration", label: "Acceleration (SisPorto)", placeholder: "Enter the value" },
-    { key: "fetalMovement", label: "Fetal movement (SisPorto)", placeholder: "Enter the value" },
-    { key: "uterineContraction", label: "Uterine contraction (SisPorto)", placeholder: "Enter the value" },
-    {
-      key: "abnormalShortTerm",
-      label: "Percentage of time with abnormal short-term variability (SisPorto)",
-      placeholder: "Enter the value",
-    },
-    {
-      key: "shortTermVariability",
-      label: "Mean value of short-term variability (SisPorto)",
-      placeholder: "Enter the value",
-    },
-    {
-      key: "abnormalLongTerm",
-      label: "Percentage of time with abnormal long-term variability (SisPorto)",
-      placeholder: "Enter the value",
-    },
-    {
-      key: "longTermVariability",
-      label: "Mean value of long-term variability (SisPorto)",
-      placeholder: "Enter the value",
-    },
-   
-    { key: "histogramWidth", label: "Histogram width", placeholder: "Enter the value" },
-    { key: "histogramMin", label: "Histogram minimum", placeholder: "Enter the value" },
-    { key: "histogramMax", label: "Histogram maximum", placeholder: "Enter the value" },
-    { key: "histogramPeaks", label: "Histogram number of peaks", placeholder: "Enter the value" },
-    { key: "histogramZeros", label: "Histogram number of zeros", placeholder: "Enter the value" },
-    { key: "histogramMode", label: "Histogram mode", placeholder: "Enter the value" },
-    { key: "histogramMean", label: "Histogram mean", placeholder: "Enter the value" },
-    { key: "histogramMedian", label: "Histogram median", placeholder: "Enter the value" },
-    { key: "histogramVariance", label: "Histogram variance", placeholder: "Enter the value" },
-    { key: "histogramTendency", label: "Histogram tendency", placeholder: "Enter the value" },
-    { key: "prolongedDecelerations", label: "Prolonged decelerations", placeholder: "Enter the value" },
-    { key: "abnormalDecelerations", label: "Abnormal decelerations", placeholder: "Enter the value" },
-    { key: "severeDecleration", label: "Severe decleration", placeholder: "Enter the value" },
+    { key: "LB", label: "Baseline Fetal Heart Rate (LB)", placeholder: "e.g., 120" },
+    { key: "AC", label: "Accelerations (AC)", placeholder: "e.g., 0.003" },
+    { key: "FM", label: "Fetal Movements (FM)", placeholder: "e.g., 0" },
+    { key: "UC", label: "Uterine Contractions (UC)", placeholder: "e.g., 0.006" },
+    { key: "ASTV", label: "Abnormal Short-Term Variability (%)", placeholder: "e.g., 43" },
+    { key: "MSTV", label: "Mean Short-Term Variability (MSTV)", placeholder: "e.g., 2.1" },
+    { key: "ALTV", label: "Abnormal Long-Term Variability (%)", placeholder: "e.g., 0" },
+    { key: "MLTV", label: "Mean Long-Term Variability (MLTV)", placeholder: "e.g., 12.4" },
+    { key: "DL", label: "Light Decelerations (DL)", placeholder: "e.g., 0.002" },
+    { key: "DS", label: "Severe Decelerations (DS)", placeholder: "e.g., 0" },
+    { key: "DP", label: "Prolonged Decelerations (DP)", placeholder: "e.g., 0" },
+    { key: "Width", label: "Histogram Width", placeholder: "e.g., 68" },
+    { key: "Min", label: "Histogram Minimum", placeholder: "e.g., 62" },
+    { key: "Max", label: "Histogram Maximum", placeholder: "e.g., 130" },
+    { key: "Nmax", label: "Histogram # of Peaks", placeholder: "e.g., 4" },
+    { key: "Nzeros", label: "Histogram # of Zeros", placeholder: "e.g., 0" },
+    { key: "Mode", label: "Histogram Mode", placeholder: "e.g., 120" },
+    { key: "Mean", label: "Histogram Mean", placeholder: "e.g., 107" },
+    { key: "Median", label: "Histogram Median", placeholder: "e.g., 121" },
+    { key: "Variance", label: "Histogram Variance", placeholder: "e.g., 73" },
+    { key: "Tendency", label: "Histogram Tendency", placeholder: "e.g., 1" },
   ]
 
   const handleInputChange = (key: string, value: string) => {
@@ -123,12 +109,31 @@ export default function ManualEntryPage() {
     setShowValidation(false)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setShowValidation(true)
-    if (validateForm()) {
-      // Store patient info for the report
-      localStorage.setItem("currentPatient", JSON.stringify({ name: patientName, id: patientId }))
+    if (!validateForm()) {
+      return // Stop if validation fails
+    }
+
+    setIsLoading(true)
+    try {
+      // 1. Convert form data to an array of numbers in the correct order
+      const featureValues = fields.map(field => parseFloat(formData[field.key]))
+
+      // 2. Call the API service
+      const result = await analysisService.submitManualEntry(featureValues)
+
+      // 3. Store patient info and result for the next page
+      const resultData = { ...result, patientName, patientId }
+      sessionStorage.setItem("analysisResult", JSON.stringify(resultData))
+
+      // 4. Navigate to the results page
       router.push("/results")
+    } catch (error: any) {
+      console.error("Submission failed:", error)
+      setErrors({ api: error.message || "Failed to connect to the server. Please try again." })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -144,7 +149,7 @@ export default function ManualEntryPage() {
     }
 
     // Validate all 22 fields
-    fields.forEach((field) => {
+    fields.forEach(field => {
       if (!formData[field.key] || formData[field.key].trim() === "") {
         newErrors[field.key] = "Fill this box"
       }
@@ -219,6 +224,9 @@ export default function ManualEntryPage() {
                   {showValidation && errors[field.key] && (
                     <p className="text-red-500 text-xs mt-1">{errors[field.key]}</p>
                   )}
+                  {errors.api && (
+                    <p className="text-red-500 text-xs mt-1">{errors.api}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -232,8 +240,12 @@ export default function ManualEntryPage() {
             >
               Clear All
             </Button>
-            <Button onClick={handleSubmit} className="bg-purple-600 text-white hover:bg-purple-700">
-              Submit
+            <Button
+              onClick={handleSubmit}
+              disabled={isLoading}
+              className="bg-purple-600 text-white hover:bg-purple-700 disabled:bg-gray-400"
+            >
+              {isLoading ? "Analyzing..." : "Submit"}
             </Button>
           </div>
         </div>

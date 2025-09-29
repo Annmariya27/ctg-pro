@@ -1,15 +1,15 @@
-# app.py
 from flask import Flask, request, jsonify
 import numpy as np
 import pandas as pd
 import joblib
 from tensorflow.keras.models import load_model
-from flask import Flask
 from flask_cors import CORS
 
+# ===========================
+# Initialize Flask app
+# ===========================
 app = Flask(__name__)
-CORS(app)  # Enable CORS
-# CORS(app, origins=["http://localhost:3000"])
+CORS(app)  # Enable CORS for all origins (safe in dev)
 
 # ===========================
 # Load saved models and scaler
@@ -26,7 +26,7 @@ base_learners = {
 bnn_meta = load_model("bnn_meta_model.keras")
 
 # ===========================
-# Define the 21 features
+# Define the 22 features
 # ===========================
 FEATURES_22 = [
     'LB', 'AC', 'FM', 'UC', 'ASTV', 'MSTV', 'ALTV', 'MLTV',
@@ -35,27 +35,26 @@ FEATURES_22 = [
 ]
 
 # ===========================
-# Initialize Flask app
+# Routes
 # ===========================
-app = Flask(__name__)
-
 @app.route('/')
 def home():
     return "Fetal Health Prediction API is running!"
 
-# ===========================
-# Predict endpoint
-# ===========================
-@app.route('/predict', methods=['POST'])
+# ✅ Updated route with /api prefix
+@app.route('/api/predict', methods=['POST'])
 def predict():
     try:
-        data = request.json
-        input_df = pd.DataFrame([data])
+        json_data = request.get_json()
+        if not json_data or 'features' not in json_data:
+            return jsonify({'error': 'Missing "features" key in request body'}), 400
 
-        # Ensure all features exist
-        missing = [f for f in FEATURES_22 if f not in input_df.columns]
-        if missing:
-            return jsonify({'error': f'Missing features: {missing}'}), 400
+        features = json_data['features']
+        if not isinstance(features, list) or len(features) != len(FEATURES_22):
+            return jsonify({'error': f'Expected a list of {len(FEATURES_22)} feature values'}), 400
+
+        # Create a DataFrame from the feature array
+        input_df = pd.DataFrame([features], columns=FEATURES_22)
 
         # Scale input features
         X_scaled = scaler.transform(input_df[FEATURES_22])
@@ -75,26 +74,25 @@ def predict():
         X_meta = np.hstack([X_scaled, meta_features])
 
         # Predict with BNN meta-learner
-        try:
-            pred_probs = bnn_meta.predict(X_meta)
-        except Exception as e:
-            return jsonify({'error': f'BNN prediction failed: {str(e)}'}), 500
+        pred_probs = bnn_meta.predict(X_meta)
+        pred_class_index = int(np.argmax(pred_probs, axis=1)[0])
+        pred_probability = float(np.max(pred_probs))
 
-        pred_class = int(np.argmax(pred_probs, axis=1)[0])
-
-        return jsonify({'prediction': pred_class})
+        return jsonify({
+            'class_index': pred_class_index + 1,  # 1=Normal, 2=Suspect, 3=Pathological
+            'probability': pred_probability
+        })
 
     except Exception as e:
-        # Print full exception for debugging
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-    
 
-# ✅ Add this ping route for testing frontend-backend connection
-@app.route("/ping")
+# ✅ Test endpoint with /api prefix
+@app.route("/api/ping")
 def ping():
     return jsonify({"message": "Backend is alive!"})
+
 # ===========================
 # Run Flask app
 # ===========================
