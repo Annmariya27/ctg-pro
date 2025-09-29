@@ -53,17 +53,21 @@ export const authService = {
 interface PredictionResponse {
   class_index: 1 | 2 | 3; // Corresponds to Normal, Suspect, Pathological
   probability: number;
+  shap_values: {
+    feature: string;
+    value: number;
+  }[];
 }
 
 // CTG Analysis Services
 export const analysisService = {
   // This function now calls the backend's /predict endpoint
-  submitManualEntry: async (features: number[]) => {
+  submitManualEntry: async (features: number[], patientName: string, patientId: string) => {
     // The backend has a /predict endpoint, not /analysis/manual
     return apiRequest<PredictionResponse>("/predict", {
       method: "POST",
       // The backend expects the data in a specific format: { features: [...] }
-      body: JSON.stringify({ features }),
+      body: JSON.stringify({ features, patientName, patientId }),
     })
   },
 
