@@ -44,7 +44,8 @@ export const buildApiUrl = (endpoint: string): string => {
 // API request helper with error handling
 export const apiRequest = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   try {
-    const url = buildApiUrl(endpoint)
+    const url = endpoint.startsWith("/") ? `${API_CONFIG.BASE_URL}${endpoint}` : buildApiUrl(endpoint);
+
     const response = await fetch(url, {
       headers: {
         "Content-Type": "application/json",

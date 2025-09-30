@@ -1,16 +1,25 @@
 from flask import Flask, request, jsonify
 import numpy as np
+import json
 import pandas as pd
 import joblib
 from tensorflow.keras.models import load_model
 from flask_cors import CORS
 import shap
+from flask_sqlalchemy import SQLAlchemy
 import os
+from datetime import datetime
 
 # ===========================
 # Initialize Flask app
 # ===========================
 app = Flask(__name__)
+
+# --- Database Configuration ---
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fetal_health.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
 CORS(app)  # Enable CORS for all origins (safe in dev)
 
 # ===========================
@@ -25,7 +34,7 @@ base_learners = {
     'CatBoost': joblib.load("CatBoost.pkl")
 }
 
-bnn_meta = load_model("bnn_meta_model.keras")
+bnn_meta = load_model("bnn_meta_model.keras", compile=False)
 
 # --- Improved File Loading ---
 # Load the SHAP background data created by the one-time script
@@ -36,6 +45,31 @@ if not os.path.exists(SHAP_BACKGROUND_PATH):
         "Please run the 'create_shap_background.py' script first to generate it."
     )
 shap_background = joblib.load(SHAP_BACKGROUND_PATH)
+
+# ===========================
+# Database Models
+# ===========================
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(50), unique=True)
+    name = db.Column(db.String(100))
+    email = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(200))
+
+class AnalysisReport(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    patient_name = db.Column(db.String(100), nullable=False)
+    patient_id = db.Column(db.String(50), nullable=False)
+    class_index = db.Column(db.Integer, nullable=False)
+    probability = db.Column(db.Float, nullable=False)
+    shap_values_json = db.Column(db.Text, nullable=False) # Store SHAP values as JSON string
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # user_id = db.Column(db.Integer, db.ForeignKey('user.id')) # Example for linking to a user
+
+with app.app_context():
+    # This will create the database file and tables if they don't exist
+    db.create_all()
+
 
 # ===========================
 # Define the 22 features
@@ -54,14 +88,22 @@ def home():
     return "Fetal Health Prediction API is running!"
 
 # ✅ Updated route with /api prefix
-@app.route('/api/predict', methods=['POST'])
+@app.route('/predict', methods=['POST'])
 def predict():
     try:
         json_data = request.get_json()
-        if not json_data or 'features' not in json_data:
-            return jsonify({'error': 'Missing "features" key in request body'}), 400
+        # Check for required fields from the frontend
+        if not json_data:
+            return jsonify({'error': 'Request must be JSON'}), 400
+
+        required_fields = ['features', 'patientName', 'patientId'] 
+        missing_fields = [field for field in required_fields if field not in json_data]
+        if missing_fields:
+            return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
 
         features = json_data['features']
+        patient_name = json_data['patientName']
+        patient_id = json_data['patientId']
         if not isinstance(features, list) or len(features) != len(FEATURES_21):
             return jsonify({'error': f'Expected a list of {len(FEATURES_21)} feature values'}), 400
 
@@ -107,6 +149,17 @@ def predict():
         mean_abs_shap = np.abs(shap_values[0]).flatten().tolist()
         shap_data = [{'feature': name, 'value': val} for name, val in zip(all_feature_names, mean_abs_shap)]
 
+        # --- Save the report to the database ---
+        new_report = AnalysisReport(
+            patient_name=patient_name,
+            patient_id=patient_id,
+            class_index=pred_class_index + 1,
+            probability=pred_probability,
+            shap_values_json=json.dumps(shap_data)
+        )
+        db.session.add(new_report)
+        db.session.commit()
+
         return jsonify({
             'class_index': pred_class_index + 1,  # 1=Normal, 2=Suspect, 3=Pathological
             'probability': pred_probability,
@@ -117,6 +170,23 @@ def predict():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+# Example route to get all reports
+@app.route('/api/reports', methods=['GET'])
+def get_reports():
+    reports = AnalysisReport.query.order_by(AnalysisReport.created_at.desc()).all()
+    output = []
+    for report in reports:
+        report_data = {
+            'id': report.id,
+            'patient_name': report.patient_name,
+            'patient_id': report.patient_id,
+            'class_index': report.class_index,
+            'probability': report.probability,
+            'created_at': report.created_at
+        }
+        output.append(report_data)
+    return jsonify({'reports': output})
 
 # ✅ Test endpoint with /api prefix
 @app.route("/api/ping")

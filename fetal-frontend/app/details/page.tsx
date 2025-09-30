@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { HeaderMenu } from "@/components/header-menu"
 import { ShapChart } from "@/components/ShapChart"
+import { generateReportPdf } from "@/lib/pdf-generator"
 
 interface ResultData {
   class_index: number
@@ -45,6 +46,7 @@ const FEATURE_EXPLANATIONS: Record<string, { title: string; reason: string }> = 
 
 export default function DetailsPage() {
   const [resultData, setResultData] = useState<ResultData | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
 
   useEffect(() => {
     const storedResult = sessionStorage.getItem("analysisResult")
@@ -54,7 +56,17 @@ export default function DetailsPage() {
   }, [])
 
   const handleGenerateReport = () => {
-    alert("PDF Report Generated Successfully!")
+    if (!resultData) return
+
+    setIsGenerating(true)
+    try {
+      generateReportPdf(resultData)
+    } catch (error) {
+      console.error("Failed to generate PDF:", error)
+      alert("Sorry, there was an error generating the PDF. Please try again.")
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   // Get the top 3 most impactful features from SHAP data that have an explanation.
@@ -70,6 +82,7 @@ export default function DetailsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-200 to-pink-200 p-4 relative">
       <HeaderMenu />
+
       <div className="max-w-md mx-auto">
         <div className="bg-white rounded-lg shadow-lg">
           <div className="p-4 border-b">
@@ -106,9 +119,10 @@ export default function DetailsPage() {
           <div className="p-4 border-t">
             <Button
               onClick={handleGenerateReport}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-full"
+              disabled={isGenerating}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-full transition-colors disabled:bg-gray-400"
             >
-              Generate Report PDF
+              {isGenerating ? "Generating PDF..." : "Generate Report PDF"}
             </Button>
           </div>
         </div>

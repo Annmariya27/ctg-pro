@@ -44,12 +44,12 @@ FEATURES_21 = [
 ]
 
 # Make sure all features exist in the dataset
-missing_features = [f for f in FEATURES_22 if f not in df.columns]
+missing_features = [f for f in FEATURES_21 if f not in df.columns]
 if missing_features:
     raise KeyError(f"The following features are missing from the dataset: {missing_features}")
 
 TARGET_COLUMN = 'NSP'
-X = df[FEATURES_22]
+X = df[FEATURES_21]
 y = df[TARGET_COLUMN].map({1.0: 0, 2.0: 1, 3.0: 2})
 
 # ===========================

@@ -120,8 +120,17 @@ export default function ManualEntryPage() {
       // 1. Convert form data to an array of numbers in the correct order
       const featureValues = fields.map(field => parseFloat(formData[field.key]))
 
+      // Add a check for invalid numbers (NaN) before sending
+      if (featureValues.some(isNaN)) {
+        throw new Error("One or more medical parameters are not valid numbers. Please check your entries.")
+      }
+
       // 2. Call the API service
-      const result = await analysisService.submitManualEntry(featureValues)
+      const result = await analysisService.submitManualEntry({
+        features: featureValues,
+        patientName: patientName,
+        patientId: patientId,
+      })
 
       // 3. Store patient info and result for the next page
       const resultData = { ...result, patientName, patientId }
@@ -213,7 +222,8 @@ export default function ManualEntryPage() {
                 <div key={field.key}>
                   <label className="block text-sm font-medium text-purple-700 mb-1">{field.label}</label>
                   <Input
-                    type="text"
+                    type="number"
+                    step="any" // Allows for decimal inputs
                     placeholder={field.placeholder}
                     value={formData[field.key]}
                     onChange={(e) => handleInputChange(field.key, e.target.value)}

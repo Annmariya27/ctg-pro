@@ -61,13 +61,16 @@ interface PredictionResponse {
 
 // CTG Analysis Services
 export const analysisService = {
-  // This function now calls the backend's /predict endpoint
-  submitManualEntry: async (features: number[], patientName: string, patientId: string) => {
-    // The backend has a /predict endpoint, not /analysis/manual
+  /**
+   * Submits manual entry data for fetal health analysis.
+   * @param data An object containing features, patientName, and patientId.
+   */
+  submitManualEntry: async (data: { features: number[]; patientName: string; patientId: string }) => {
     return apiRequest<PredictionResponse>("/predict", {
       method: "POST",
-      // The backend expects the data in a specific format: { features: [...] }
-      body: JSON.stringify({ features, patientName, patientId }),
+      // The backend expects a JSON object with features, patientName, and patientId.
+      // The 'data' object already has this structure.
+      body: JSON.stringify(data),
     })
   },
 

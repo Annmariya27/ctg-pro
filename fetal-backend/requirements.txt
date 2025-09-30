@@ -1,10 +1,13 @@
 flask
-numpy
+flask_cors
+flask_sqlalchemy
 pandas
+openpyxl
+numpy
 scikit-learn
+imbalanced-learn
 xgboost
 catboost
-imblearn
-tensorflow==2.10
+tensorflow
+shap
 joblib
-openpyxl
